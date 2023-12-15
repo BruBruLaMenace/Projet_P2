@@ -12,7 +12,7 @@ typedef struct posix_header
     char mode[8];                 /* 100 */
     char uid[8];                  /* 108 */
     char gid[8];                  /* 116 */
-    char size[12];                /* 124 */
+    char size[12];                /* 124 */ // size des donne avant header
     char mtime[12];               /* 136 */
     char chksum[8];               /* 148 */
     char typeflag;                /* 156 */

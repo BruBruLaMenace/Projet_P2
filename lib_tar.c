@@ -1,5 +1,15 @@
 #include "lib_tar.h"
+//lseek permet de bouger
+#include <unistd.h>
+#include <fcntl.h>
+#include <string.h>
+#include <stdio.h>
+#include <stdlib.h>
+#include <string.h>
+//size donne la taille des donne mais je dois bouger par block
+// imaginons taille 1222 je dois bouger de 3 block
 
+#define BLOCK_SIZE 512
 /**
  * Checks whether the archive is valid.
  *
@@ -16,6 +26,8 @@
  *         -3 if the archive contains a header with an invalid checksum value
  */
 int check_archive(int tar_fd) {
+    
+
     return 0;
 }
 
@@ -118,3 +130,38 @@ int list(int tar_fd, char *path, char **entries, size_t *no_entries) {
 ssize_t read_file(int tar_fd, char *path, size_t offset, uint8_t *dest, size_t *len) {
     return 0;
 }
+
+tar_header_t get_header(int tar_fd){
+
+    tar_header_t header;
+    if (read(tar_fd, &header,sizeof(header)) { //read avance avance d un lbock
+        perror("Error reading header");
+        return 1;
+    }
+    return header
+       
+     
+}
+
+int next_header(int tar_fd,tar_header_t heady){
+    
+    tar_header_t headino;
+    int size = octalToDecimal(heady.size);
+    int movement = (size /512) + (size%512);
+    lseek(tar_fd, movement*BLOCK_SIZE ,SEEK_CUR);
+    headino = get_header(tar_fd);
+    return headino;
+        
+}
+
+int octalToDecimal(const char *str) {
+    return strtol(str, NULL, 8);
+}
+
+
+
+
+
+
+
+
