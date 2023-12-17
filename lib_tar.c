@@ -26,9 +26,46 @@
  *         -3 if the archive contains a header with an invalid checksum value
  */
 int check_archive(int tar_fd) {
+    int n_headers = 0;
+    char last = '\0';
+    unsigned int checksum = 0;
+    while(true){
+        
+        tar_header_t header = get_header(tar_fd);
+        
+        if (header.name[0] == last) {
+            // End of archive
+            break;
+        }       
+        // Check magic value
+        if (strncmp(header.magic, "ustar", 5) != 0 || header.magic[5] != last) {
+            return -1;  // Invalid magic value
+        }
+        // Check version value
+        if (strncmp(header.version, "00", 2) != 0 || header.version[2] != '\0') {
+            return -2;  // Invalid version value
+        }  
+        
+        // Check checksum
+        checksum = 0;
+        for (int i = 0; i < sizeof(header); i++) {
+            checksum += ((unsigned char *)(&header))[i];
+        }
+
+        // Subtract the checksum field in the header
+        checksum -= octalToDecimal(header.chksum);
+        if (checksum != octalToDecimal(header.chksum)) {
+            return -3;  // Invalid checksum
+        }
+
+        n_headers++;
+        
+        header = next_header(tar_fd, header);
+    
+    }
     
 
-    return 0;
+    return n_headers;
 }
 
 /**
@@ -147,7 +184,8 @@ int next_header(int tar_fd,tar_header_t heady){
     
     tar_header_t headino;
     int size = octalToDecimal(heady.size);
-    int movement = (size /512) + (size%512);
+    int reste = (size % 512 != 0) ? 1 : 0; //si reste rajoute 1blockd e mouvement
+    int movement = (size /512) + reste;
     lseek(tar_fd, movement*BLOCK_SIZE ,SEEK_CUR);
     headino = get_header(tar_fd);
     return headino;
@@ -157,11 +195,4 @@ int next_header(int tar_fd,tar_header_t heady){
 int octalToDecimal(const char *str) {
     return strtol(str, NULL, 8);
 }
-
-
-
-
-
-
-
 
