@@ -78,7 +78,25 @@ int check_archive(int tar_fd) {
  *         any other value otherwise.
  */
 int exists(int tar_fd, char *path) {
-    return 0;
+    char last = '\0';
+    while (1) {
+        tar_header_t header = get_header(tar_fd);
+        
+        // Check for the end of the archive
+        if (header.name[0] == last) {
+            break;
+        }
+
+        // Check if the header's path matches the specified path
+        if (strcmp(header.name, path) == 0) {
+            return 1; // Entry exists
+        }
+        
+        // Move to the next header
+        header = next_header(tar_fd, header);
+    }
+
+    return 0; // Entry not found
 }
 
 /**
@@ -167,6 +185,9 @@ int list(int tar_fd, char *path, char **entries, size_t *no_entries) {
 ssize_t read_file(int tar_fd, char *path, size_t offset, uint8_t *dest, size_t *len) {
     return 0;
 }
+
+
+
 
 tar_header_t get_header(int tar_fd){
 
