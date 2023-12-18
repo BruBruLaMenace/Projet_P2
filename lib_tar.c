@@ -5,11 +5,46 @@
 #include <string.h>
 #include <stdio.h>
 #include <stdlib.h>
-#include <string.h>
+
 //size donne la taille des donne mais je dois bouger par block
 // imaginons taille 1222 je dois bouger de 3 block
 
+#define ERROR_INDICATOR "ERROR"  // Define an error indicator
 #define BLOCK_SIZE 512
+
+
+int octalToDecimal(const char *str) {
+    return strtol(str, NULL, 8);
+}
+
+tar_header_t get_header(int tar_fd){
+
+    tar_header_t header;
+    if (read(tar_fd, &header, sizeof(header)) < 0) {
+        perror("Error reading header");
+        strncpy(header.name, ERROR_INDICATOR, sizeof(header.name));
+        // Ensure null-termination
+        header.name[sizeof(header.name) - 1] = '\0';
+    }
+    return header;
+}
+
+tar_header_t next_header(int tar_fd,tar_header_t heady){
+    tar_header_t headino;
+    int size = octalToDecimal(heady.size);
+    int reste = (size % 512 != 0) ? 1 : 0; //si reste rajoute 1blockd e mouvement
+    int movement = (size /512) + reste;
+    lseek(tar_fd, movement*BLOCK_SIZE ,SEEK_CUR);
+    headino = get_header(tar_fd);
+    return headino;
+        
+}
+
+
+
+
+
+
 /**
  * Checks whether the archive is valid.
  *
@@ -29,7 +64,7 @@ int check_archive(int tar_fd) {
     int n_headers = 0;
     char last = '\0';
     unsigned int checksum = 0;
-    while(true){
+    while(1){
         
         tar_header_t header = get_header(tar_fd);
         
@@ -187,33 +222,4 @@ ssize_t read_file(int tar_fd, char *path, size_t offset, uint8_t *dest, size_t *
 }
 
 
-
-
-tar_header_t get_header(int tar_fd){
-
-    tar_header_t header;
-    if (read(tar_fd, &header,sizeof(header)) { //read avance avance d un lbock
-        perror("Error reading header");
-        return 1;
-    }
-    return header
-       
-     
-}
-
-int next_header(int tar_fd,tar_header_t heady){
-    
-    tar_header_t headino;
-    int size = octalToDecimal(heady.size);
-    int reste = (size % 512 != 0) ? 1 : 0; //si reste rajoute 1blockd e mouvement
-    int movement = (size /512) + reste;
-    lseek(tar_fd, movement*BLOCK_SIZE ,SEEK_CUR);
-    headino = get_header(tar_fd);
-    return headino;
-        
-}
-
-int octalToDecimal(const char *str) {
-    return strtol(str, NULL, 8);
-}
 
