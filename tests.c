@@ -32,6 +32,7 @@ int main(int argc, char **argv) {
 
     printf("Opening file: %s\n", argv[1]);
     int fd = open(argv[1], O_RDONLY);
+    int fd_init = fd;
     if (fd == -1) {
         perror("open(tar_file)");
         return -1;
@@ -46,25 +47,25 @@ int main(int argc, char **argv) {
     }
 
     // Réinitialiser la position du descripteur de fichier pour les tests suivants
-    lseek(fd, 0, SEEK_SET);
+    lseek(fd, 512, SEEK_SET);
 
     // Utiliser un chemin valide dans l'archive TAR
-    char *test_path = "CACA.c";
+    char *test_path = "lib_tar.c";
 
     // Test de exists
     ret = exists(fd, test_path);
-    printf("exists for %s returned %d\n", test_path, ret);
-    lseek(fd, 0, SEEK_SET); // Réinitialiser à nouveau
+    printf("exists for %s returned %d\n", test_path, ret);   
+    lseek(fd, 512, SEEK_SET); // Réinitialiser à nouveau
 
     // Test de is_file
     ret = is_file(fd, test_path);
     printf("is_file for %s returned %d\n", test_path, ret);
-    lseek(fd, 0, SEEK_SET);
+    lseek(fd, 512, SEEK_SET);
 
     // Test de is_dir
     ret = is_dir(fd, test_path);
     printf("is_dir for %s returned %d\n", test_path, ret);
-    lseek(fd, 0, SEEK_SET);
+    lseek(fd, 512, SEEK_SET);
 
     // Test de is_symlink
     ret = is_symlink(fd, test_path);

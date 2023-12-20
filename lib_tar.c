@@ -30,18 +30,17 @@ tar_header_t get_header(int tar_fd){
 }
 
 
-/*tar_header_t next_header(int tar_fd,tar_header_t heady){
+tar_header_t next_header(int tar_fd,tar_header_t heady){
     tar_header_t headino;
     int size = octalToDecimal(heady.size);
     int reste = (size % 512 != 0) ? 1 : 0; //si reste rajoute 1blockd e mouvement
     int movement = (size /512) + reste;
-    lseek(tar_fd, movement*BLOCK_SIZE ,SEEK_CUR);
+    lseek(tar_fd, movement * BLOCK_SIZE ,SEEK_CUR);
     headino = get_header(tar_fd);
     return headino;
-        
-}*/
+}
 
-tar_header_t next_header(int tar_fd, tar_header_t current_header) {
+/*tar_header_t next_header(int tar_fd, tar_header_t current_header) {
     tar_header_t next_header;
     int size = octalToDecimal(current_header.size);
 
@@ -62,7 +61,7 @@ tar_header_t next_header(int tar_fd, tar_header_t current_header) {
     }
 
     return next_header;
-}
+}*/
 
 
 
@@ -104,8 +103,9 @@ int check_archive(int tar_fd) {
     int n_headers = 0;
     char last = '\0';
     // print_header_info(tar_fd);
+    tar_header_t header = get_header(tar_fd);
     while(1){
-        tar_header_t header = get_header(tar_fd);
+        
         printf("Name: %s\n", header.name);
         printf("Mode: %s\n", header.mode);
         printf("UID: %s\n", header.uid);
@@ -192,7 +192,7 @@ int exists(int tar_fd, char *path) {
  */
 int is_dir(int tar_fd, char *path) {
     char last = '\0';
-    lseek(tar_fd, 0, SEEK_SET);  // Ensure we start at the beginning of the file
+    //lseek(tar_fd, 0, SEEK_SET);  // Ensure we start at the beginning of the file
 
     while (1) {
         tar_header_t header = get_header(tar_fd);
@@ -225,10 +225,9 @@ int is_dir(int tar_fd, char *path) {
  */
 int is_file(int tar_fd, char *path) {
     char last = '\0';
-    lseek(tar_fd, 0, SEEK_SET);  // Ensure we start at the beginning of the file
-
+    tar_header_t header = get_header(tar_fd);
     while (1) {
-        tar_header_t header = get_header(tar_fd);
+        
         
         // Check for the end of the archive
         if (header.name[0] == last) {
