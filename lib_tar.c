@@ -113,12 +113,12 @@ int check_archive(int tar_fd) {
  *         any other value otherwise.
  */
 int exists(int tar_fd, char *path) {
-    char last = '\0';
+
     while (1) {
         tar_header_t header = get_header(tar_fd);
         
         // Check for the end of the archive
-        if (header.name[0] == last) {
+        if (header.name[0] == '\0') {
             break;
         }
 
@@ -144,6 +144,26 @@ int exists(int tar_fd, char *path) {
  *         any other value otherwise.
  */
 int is_dir(int tar_fd, char *path) {
+    char last = '\0';
+    lseek(tar_fd, 0, SEEK_SET);  // Ensure we start at the beginning of the file
+
+    while (1) {
+        tar_header_t header = get_header(tar_fd);
+        
+        // Check for the end of the archive
+        if (header.name[0] == last) {
+            break;
+        }
+
+        // Check if the header's path matches the specified path and if it's a directory
+        if (strcmp(header.name, path) == 0 && header.typeflag == DIRTYPE) {
+            return 1; // Directory exists
+        }
+        
+        // Move to the next header
+        header = next_header(tar_fd, header);
+    }
+    // not found
     return 0;
 }
 
@@ -157,7 +177,27 @@ int is_dir(int tar_fd, char *path) {
  *         any other value otherwise.
  */
 int is_file(int tar_fd, char *path) {
-    return 0;
+    char last = '\0';
+    lseek(tar_fd, 0, SEEK_SET);  // Ensure we start at the beginning of the file
+
+    while (1) {
+        tar_header_t header = get_header(tar_fd);
+        
+        // Check for the end of the archive
+        if (header.name[0] == last) {
+            break;
+        }
+
+        // Check if the header's path matches the specified path and if it's a regular file
+        if (strcmp(header.name, path) == 0 && (header.typeflag == REGTYPE || header.typeflag == AREGTYPE)) {
+            return 1; // File exists
+        }
+        
+        // Move to the next header
+        header = next_header(tar_fd, header);
+    }
+
+    return 0; // File not found
 }
 
 /**
@@ -169,7 +209,27 @@ int is_file(int tar_fd, char *path) {
  *         any other value otherwise.
  */
 int is_symlink(int tar_fd, char *path) {
-    return 0;
+    char last = '\0';
+    lseek(tar_fd, 0, SEEK_SET);  // Ensure we start at the beginning of the file
+
+    while (1) {
+        tar_header_t header = get_header(tar_fd);
+        
+        // Check for the end of the archive
+        if (header.name[0] == last) {
+            break;
+        }
+
+        // Check if the header's path matches the specified path and if it's a symlink
+        if (strcmp(header.name, path) == 0 && header.typeflag == SYMTYPE) {
+            return 1; // Symlink exists
+        }
+        
+        // Move to the next header
+        header = next_header(tar_fd, header);
+    }
+
+    return 0; // Symlink not found
 }
 
 
@@ -196,7 +256,40 @@ int is_symlink(int tar_fd, char *path) {
  *         any other value otherwise.
  */
 int list(int tar_fd, char *path, char **entries, size_t *no_entries) {
-    return 0;
+char last = '\0';
+    size_t path_len = strlen(path);
+    size_t max_entries = *no_entries;
+    *no_entries = 0;
+
+    lseek(tar_fd, 0, SEEK_SET);  // Start at the beginning of the file
+
+    while (1) {
+        tar_header_t header = get_header(tar_fd);
+        
+        // Check for the end of the archive
+        if (header.name[0] == last) {
+            break;
+        }
+
+        // Check if the entry is a direct child of the specified path
+        if (strncmp(header.name, path, path_len) == 0) {
+            char *entry_name = header.name + path_len;
+            
+            // Check if the entry is directly in the specified directory (not in a subdirectory)
+            if (entry_name[0] != '\0' && (entry_name[0] != '/' || entry_name[1] == '\0')) {
+                if (*no_entries < max_entries) {
+                    strncpy(entries[*no_entries], header.name, BLOCK_SIZE);
+                    entries[*no_entries][BLOCK_SIZE - 1] = '\0';  // Ensure null-termination
+                    (*no_entries)++;
+                }
+            }
+        }
+        
+        // Move to the next header
+        header = next_header(tar_fd, header);
+    }
+
+    return *no_entries > 0 ? 1 : 0; // Return 1 if any entries found, 0 otherwise
 }
 
 /**
@@ -218,7 +311,43 @@ int list(int tar_fd, char *path, char **entries, size_t *no_entries) {
  *
  */
 ssize_t read_file(int tar_fd, char *path, size_t offset, uint8_t *dest, size_t *len) {
-    return 0;
+    char last = '\0';
+    lseek(tar_fd, 0, SEEK_SET);  // Start at the beginning of the file
+
+    while (1) {
+        tar_header_t header = get_header(tar_fd);
+        
+        // Check for the end of the archive
+        if (header.name[0] == last) {
+            return -1;  // File not found
+        }
+
+        // Check if the header's path matches the specified path
+        if (strcmp(header.name, path) == 0 && (header.typeflag == REGTYPE || header.typeflag == AREGTYPE)) {
+            size_t file_size = octalToDecimal(header.size);
+
+            // Check if offset is within the file size
+            if (offset >= file_size) {
+                return -2;  // Offset outside the file total length
+            }
+
+            lseek(tar_fd, BLOCK_SIZE * ((offset / BLOCK_SIZE) + 1), SEEK_SET); // Move to the start of file data
+            ssize_t to_read = file_size - offset > *len ? *len : file_size - offset;
+            ssize_t read_bytes = read(tar_fd, dest, to_read);
+            
+            if (read_bytes < 0) {
+                return -1; // Error in reading file
+            }
+
+            *len = read_bytes;
+            return file_size - offset > *len ? file_size - offset - *len : 0; // Return remaining bytes
+        }
+        
+        // Move to the next header
+        header = next_header(tar_fd, header);
+    }
+
+    return -1;  // File not found
 }
 
 
