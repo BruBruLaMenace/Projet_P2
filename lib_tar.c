@@ -40,33 +40,6 @@ tar_header_t next_header(int tar_fd,tar_header_t heady){
     return headino;
 }
 
-/*tar_header_t next_header(int tar_fd, tar_header_t current_header) {
-    tar_header_t next_header;
-    int size = octalToDecimal(current_header.size);
-
-    // Calculer le nombre de blocs à sauter pour atteindre le prochain en-tête
-    // Ajouter 1 pour tenir compte de l'en-tête actuel
-    int blocks_to_skip = (size / BLOCK_SIZE) + (size % BLOCK_SIZE ? 1 : 0) + 1;
-
-    // Se déplacer vers le prochain en-tête
-    if (lseek(tar_fd, blocks_to_skip * BLOCK_SIZE, SEEK_CUR) == -1) {
-        perror("Error moving to next header");
-        // Gestion d'erreur, peut-être retourner un en-tête vide ou signaler une erreur
-    }
-
-    // Lire le prochain en-tête
-    if (read(tar_fd, &next_header, sizeof(next_header)) < 0) {
-        perror("Error reading next header");
-        // Gestion d'erreur
-    }
-
-    return next_header;
-}*/
-
-
-
-
-
 
 
 /**
@@ -84,35 +57,12 @@ tar_header_t next_header(int tar_fd,tar_header_t heady){
  *         -2 if the archive contains a header with an invalid version value,
  *         -3 if the archive contains a header with an invalid checksum value
  */
-void print_header_info(int tar_fd) {
-    char last = '\0';
-    while(1) {
-        tar_header_t header = get_header(tar_fd);
-        
-        if (header.name[0] == last) {
-            break; // End of archive
-        }
-
-        printf("Magic: '%.*s', Version: '%.*s'\n", TMAGLEN, header.magic, TVERSLEN, header.version);
-
-        header = next_header(tar_fd, header);
-    }
-}
 
 int check_archive(int tar_fd) {
     int n_headers = 0;
-    char last = '\0';
     // print_header_info(tar_fd);
     tar_header_t header = get_header(tar_fd);
     while(1){
-        
-        printf("Name: %s\n", header.name);
-        printf("Mode: %s\n", header.mode);
-        printf("UID: %s\n", header.uid);
-        printf("Magic: %.6s\n", header.magic);
-        printf("Version: %.2s\n", header.version);
-
-        
         if (header.name[0] == '\0') {
             break; // End of archive
         }
@@ -192,18 +142,18 @@ int exists(int tar_fd, char *path) {
  */
 int is_dir(int tar_fd, char *path) {
     char last = '\0';
-    //lseek(tar_fd, 0, SEEK_SET);  // Ensure we start at the beginning of the file
-
+    lseek(tar_fd, 0, SEEK_SET);  // Ensure we start at the beginning of the file
+    tar_header_t header = get_header(tar_fd);
     while (1) {
-        tar_header_t header = get_header(tar_fd);
+        
         
         // Check for the end of the archive
         if (header.name[0] == last) {
             break;
         }
-
         // Check if the header's path matches the specified path and if it's a directory
         if (strcmp(header.name, path) == 0 && header.typeflag == DIRTYPE) {
+
             return 1; // Directory exists
         }
         
@@ -257,10 +207,8 @@ int is_file(int tar_fd, char *path) {
 int is_symlink(int tar_fd, char *path) {
     char last = '\0';
     lseek(tar_fd, 0, SEEK_SET);  // Ensure we start at the beginning of the file
-
+    tar_header_t header = get_header(tar_fd);
     while (1) {
-        tar_header_t header = get_header(tar_fd);
-        
         // Check for the end of the archive
         if (header.name[0] == last) {
             break;
@@ -308,10 +256,8 @@ char last = '\0';
     *no_entries = 0;
 
     lseek(tar_fd, 0, SEEK_SET);  // Start at the beginning of the file
-
-    while (1) {
-        tar_header_t header = get_header(tar_fd);
-        
+    tar_header_t header = get_header(tar_fd);
+    while (1) {        
         // Check for the end of the archive
         if (header.name[0] == last) {
             break;
@@ -359,10 +305,8 @@ char last = '\0';
 ssize_t read_file(int tar_fd, char *path, size_t offset, uint8_t *dest, size_t *len) {
     char last = '\0';
     lseek(tar_fd, 0, SEEK_SET);  // Start at the beginning of the file
-
+    tar_header_t header = get_header(tar_fd);
     while (1) {
-        tar_header_t header = get_header(tar_fd);
-        
         // Check for the end of the archive
         if (header.name[0] == last) {
             return -1;  // File not found
